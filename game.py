@@ -199,6 +199,7 @@ class Game(arcade.Window):
             # только на краях ракетки, когда он летит "вскользь". В этом случае скорость не меняется.
             return ball_speed_i[0], ball_speed_i[1]
 
+
     def on_key_press(self, symbol: int, modifiers: int):
         if self.lives_left > 0:  # Игра не закончена
             if symbol == arcade.key.RIGHT and self.bar.right < SCREEN_WIDTH:  # движ каретки в пределах поля
