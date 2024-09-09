@@ -1,7 +1,7 @@
-import math
+from math import pi, atan2, cos, sin, fabs
 
 import arcade
-import time
+from time import sleep
 
 # print(help(arcade))
 
@@ -114,9 +114,11 @@ class Game(arcade.Window):
     def update(self, delta_time: float):
         if self.ball.top <= 0 and not self.in_round_start:  # Упустили шар в подвал
             self.lives_left -= 1
-            time.sleep(3)
+            sleep(3)
             if self.lives_left > 0:
                 self.setup_round()
+            else:
+                self.in_round_start = True
         elif arcade.check_for_collision(self.bar, self.ball):
             if not self.in_collision: # Это начало столкновения (первое касание при столкновении) с ракеткой
                 self.ball_hits += 1     # Увеличили счёт
@@ -167,33 +169,32 @@ class Game(arcade.Window):
         """ atan всегда возвращает значение угла, лежащего в 1-й или 4-й четвертях. Поскольку угол падения всегда отрицательный,
         а нам нужен противоположный угол, то если вернулся угол отрицательный, нам надо добавить 180 град:  
         """
-        angle_i = math.atan2(ball_speed_i[1], ball_speed_i[0])  # Угол, противоположный углу падения
+        angle_i = atan2(ball_speed_i[1], ball_speed_i[0])  # Угол, противоположный углу падения
         if angle_i < 0:
-            angle_i += math.pi  # Угол скорости всегда отрицательный при столкновении, а здесь мы
-                                # вычисляем противоположный угол, т.е. не "куда летит", а "откуда летит"
-
+            angle_i += pi   # Угол скорости всегда отрицательный при столкновении, а здесь мы
+                            # вычисляем противоположный угол, т.е. не "куда летит", а "откуда летит"
         # Вычислим угол нормали (angle_n) в момент столкновения. Он зависит от точки падения шара.
         # Если он падает на ровную поверхность, то нормаль = 90 град.
         # Если падает на торец, то нормаль - это угол вектора от центра закругления ракетки к центру шара в момент столкновения.
         if ball_center[0] >= bar_center_left[0]:
             if ball_center[0] <= bar_center_right[0]:
                 # Столкновение с ровной поверхностью ракетки
-                angle_n = math.pi / 2
+                angle_n = pi / 2
             else:  # Столкновение с правым торцем ракетки
-                angle_n = math.atan2(ball_center[1] - bar_center_right[1],
+                angle_n = atan2(ball_center[1] - bar_center_right[1],
                                      ball_center[0] - bar_center_right[0])
         else:  # Столкновение с левым торцем ракетки
-            angle_n = math.atan2(ball_center[1] - bar_center_left[1],
+            angle_n = atan2(ball_center[1] - bar_center_left[1],
                                  ball_center[0] - bar_center_left[0])
-            angle_n = angle_n + (math.pi if angle_n < 0 else 0)     # угол нормали здесь должен быть во 2-й четверти
+            angle_n = angle_n + (pi if angle_n < 0 else 0)     # угол нормали здесь должен быть во 2-й четверти
 
-        if math.fabs(angle_i - angle_n) < math.pi / 2:  # шар упал под острым углом на поверхность отражения - отскочил!
+        if fabs(angle_i - angle_n) < pi / 2:  # шар упал под острым углом на поверхность отражения - отскочил!
             angle_r = 2 * angle_n - angle_i  # тогда рассчитаем угол отражения (с учётом, что angle_i - угол, _обратный_ углу падения):
             # angle_r = angle_n + (angle_n - angle_i) = 2 * angle_n - angle_i
             speed_i_modulus = (ball_speed_i[0] ** 2 + ball_speed_i[1] ** 2) ** 0.5  # Вычислим модуль скорости падения
             # А скорость отражения по абс.величине должна быть такой же.
             # Добавка "+ bar_speed * ADDED_BALL_SPEED_X - добавляет часть скорости движения ракетки. Направление движения ракетки учитывается автоматически.
-            return speed_i_modulus * math.cos(angle_r) + bar_speed * ADDED_BALL_SPEED_X, speed_i_modulus * math.sin(angle_r)
+            return speed_i_modulus * cos(angle_r) + bar_speed * ADDED_BALL_SPEED_X, speed_i_modulus * sin(angle_r)
         else:  # Шар упал под тупым углом к плоскости отражения - такое может быть
             # только на краях ракетки, когда он летит "вскользь". В этом случае скорость не меняется.
             return ball_speed_i[0], ball_speed_i[1]
@@ -212,7 +213,7 @@ class Game(arcade.Window):
                 self.ball.change_x = self.bar.change_x
 
     def on_key_release(self, symbol: int, modifiers: int):
-        if symbol == arcade.key.RIGHT or symbol == arcade.key.LEFT and self.lives_left > 0:  # останов ракетки
+        if symbol in(arcade.key.RIGHT, arcade.key.LEFT) and self.lives_left > 0:  # останов ракетки
             self.bar.change_x = 0
             if self.in_round_start:
                 self.ball.change_x = 0
@@ -220,7 +221,7 @@ class Game(arcade.Window):
             self.ball.change_x = INIT_BALL_SPEED_X
             self.ball.change_y = INIT_BALL_SPEED_Y
             self.in_round_start = False  # Всё, не в начале раунда
-        elif symbol == arcade.key.ENTER and self.lives_left == 0:  # Начало 3-раундовой игры
+        elif symbol == arcade.key.ENTER and self.lives_left <= 0:  # Начало 3-раундовой игры
             self.setup_game()  # Инициализируем игру,
             self.setup_round()  # Инициализируем раунд
 
