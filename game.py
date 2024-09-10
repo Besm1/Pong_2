@@ -3,6 +3,8 @@ from math import pi, atan2, cos, sin, fabs
 import arcade
 from time import sleep
 
+from arcade.examples.slime_invaders import GAME_OVER
+
 # print(help(arcade))
 
 """
@@ -25,14 +27,18 @@ from time import sleep
 
 """
 
+# Размеры и титул экрана
 SCREEN_WIDTH = 800
 SCREEN_HEIGHT = 600
 SCREEN_TITLE = 'Pong Game'
 
-COLLISION_WIDTH = 2  # Глубина прогибв ракетки при столкновении (выяснилось эксперименальным путём)
+COLLISION_WIDTH = 2  # Глубина прогиба ракетки при столкновении (выяснилось экспериментальным путём)
 
 INIT_BALL_SPEED_X = 2  # Начальная скорость шара
 INIT_BALL_SPEED_Y = 4
+
+BAR_INIT_POS_X = SCREEN_WIDTH / 2   # Начальная позиция центра ракетки
+BAR_INIT_POS_Y = SCREEN_HEIGHT / 5
 
 ADDED_BALL_SPEED_X = 0.2  # Добавка к горизонтальной скорости шарика в долях от скорости движения ракетки
 
@@ -40,6 +46,14 @@ BAR_MOVEMENT_SPEED = 5  # Скорость ракетки при движени�
 
 INIT_TRIALS_QTY = 3  # Начальное количество попыток
 
+LIVES_CNT_TEXT_X = 10   # Позиция текста счётчика жизней
+LIVES_CNT_TEXT_Y = 20
+
+SCORE_X = SCREEN_WIDTH * 0.75    # Позиция текста счёта
+SCORE_Y = 20
+
+TEXT_SIZE = 14      # Параметры текста - размер и цвет
+TEXT_COLOR = arcade.color.BLACK
 
 class Bar(arcade.Sprite):
     def __init__(self):
@@ -84,9 +98,9 @@ class Game(arcade.Window):
         # Пишем остаток жизней и счёт
         arcade.draw_text(f'Lives left: {self.lives_left}' +
                          ('   GAME OVER! <ENTER> to start new game.' if self.lives_left == 0 else '')
-                         , 10, 20, arcade.color.BLACK, 14)
-        arcade.draw_text(text=f'Score: {self.ball_hits}', start_x=SCREEN_WIDTH * 0.75, start_y=20,
-                         color=arcade.color.BLACK, font_size=14)
+                         , start_x=LIVES_CNT_TEXT_X, start_y=LIVES_CNT_TEXT_Y, color=TEXT_COLOR, font_size=TEXT_SIZE)
+        arcade.draw_text(text=f'Score: {self.ball_hits}', start_x=SCORE_X, start_y=SCORE_Y,
+                         color=TEXT_COLOR, font_size=TEXT_SIZE)
 
     def setup_game(self):
         """ инициализация 3-раундовой игры """
@@ -96,8 +110,8 @@ class Game(arcade.Window):
     def setup_round(self):
         """ Инициализируем раунд """
         # Позиционируем ракетку
-        self.bar.center_x = SCREEN_WIDTH / 2
-        self.bar.center_y = SCREEN_HEIGHT / 5
+        self.bar.center_x = BAR_INIT_POS_X
+        self.bar.center_y = BAR_INIT_POS_Y
         # Задаём скорость движения ракетки
         self.change_x = 0
         # ПОзиционируем шар
