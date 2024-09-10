@@ -188,7 +188,7 @@ class Game(arcade.Window):
         else:  # Столкновение с левым торцом ракетки
             angle_n = atan2(ball_center[1] - bar_center_left[1],
                             ball_center[0] - bar_center_left[0])
-            angle_n = angle_n # + pi #(pi if (angle_n < 0 else 0)  # угол нормали здесь должен быть во 2-й или 3-й четверти
+            angle_n = angle_n + (2 * pi if angle_n < 0 else 0)  # угол нормали здесь должен быть во 2-й или 3-й четверти
 
 
         # Теперь вычислим угол отражения (с учётом, что angle_i - угол, _обратный_ углу падения):
