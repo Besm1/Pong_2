@@ -1,4 +1,4 @@
-from math import pi, atan2, cos, sin, fabs
+from math import pi, atan2, cos, sin, fabs, radians
 
 import arcade
 from time import sleep
@@ -30,7 +30,7 @@ from arcade.examples.slime_invaders import GAME_OVER
 # Размеры и титул экрана
 SCREEN_WIDTH = 800
 SCREEN_HEIGHT = 600
-SCREEN_TITLE = 'Pong Game'
+SCREEN_TITLE = 'Пинг-понг для Насти и её друзей'
 
 COLLISION_WIDTH = 2  # Глубина прогиба ракетки при столкновении (выяснилось экспериментальным путём)
 
@@ -54,6 +54,11 @@ SCORE_Y = 20
 
 TEXT_SIZE = 14      # Параметры текста - размер и цвет
 TEXT_COLOR = arcade.color.BLACK
+
+MIN_ANGLE = radians(15)  # Минимальный угол отклонения вектора скорости от вертикали или горизонтали
+
+SCORE_LIMIT = 5    # Количество ударов, после которого скорость движения шара увеличивается
+SCORE_ACCELERATION = 0.2    # доля увеличения скорости
 
 class Bar(arcade.Sprite):
     def __init__(self):
@@ -181,10 +186,14 @@ class Game(arcade.Window):
         bar_center_right = (
             bar_center[0] + bar_dim[0] / 2 - bar_dim[1] / 2, bar_center[1])  # центр правого полукруга ракетки
 
+        # добавка к скорости при наборе очередной порции ударов в количестве SCORE_LIMIT
+        accel_coeff = 1 + (0 if self.ball_hits % SCORE_LIMIT else SCORE_ACCELERATION)
+        # print(f'Коэф.ускорения {accel_coeff}')
+
         # Если шарик падает на ровную пов-ть, то при отскоке просто меняется знак вектора скорости по вертикали:
         if bar_center_left[0] <= ball_center[0] <= bar_center_right[0]:  # Столкновение с ровной поверхностью ракетки
                         # а к скорости по горизонтали добавляется часть скорости движения ракетки.
-            return ball_speed_i[0] + bar_speed * ADDED_BALL_SPEED_X, -ball_speed_i[1]
+            return accel_coeff * (ball_speed_i[0] + bar_speed * ADDED_BALL_SPEED_X), -ball_speed_i[1] * accel_coeff
 
         """ atan всегда возвращает значение угла, лежащего в 1-й или 4-й четвертях. Поскольку угол падения всегда отрицательный,
         а нам нужен противоположный угол, то если вернулся угол отрицательный, нам надо добавить 180 град:  
@@ -210,7 +219,17 @@ class Game(arcade.Window):
         if fabs(angle_i - angle_n) < pi / 2:  # шар упал под острым углом на поверхность отражения - отскакивает
             angle_r = 2 * angle_n - angle_i
             speed_i_modulus = (ball_speed_i[0] ** 2 + ball_speed_i[1] ** 2) ** 0.5  # Вычислим модуль скорости падения
-            # А скорость отражения по модулю должна быть такой же.
+            # А модуль скорости отражения должен быть такой же.
+
+            # Если угол становится вертикальным (т.е. приближается к pi/2), то отклоним его от вертикали.
+            # А если он слишком горизонтальный (т.е. приближается к 0 или к pi), то отклоним его от горизонтали
+            if (0 <= angle_r <= MIN_ANGLE) or (pi / 2 <= angle_r <= pi / 2 + MIN_ANGLE) or (-pi <= angle_r <= -pi + MIN_ANGLE):
+                angle_r += MIN_ANGLE
+            elif (-MIN_ANGLE <= angle_r <= 0) or (pi / 2 - MIN_ANGLE <= angle_r <= pi / 2) or (pi - MIN_ANGLE <= angle_r <= pi):
+                angle_r -= MIN_ANGLE
+
+            speed_i_modulus *= accel_coeff
+
             # Добавка "+ bar_speed * ADDED_BALL_SPEED_X - добавляет часть скорости движения ракетки.
             return speed_i_modulus * cos(angle_r) + bar_speed * ADDED_BALL_SPEED_X, speed_i_modulus * sin(angle_r)
         else:  # Шар упал под тупым углом к плоскости отражения - такое может быть
