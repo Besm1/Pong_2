@@ -3,7 +3,10 @@ from math import pi, atan2, cos, sin, fabs, radians
 import arcade
 from time import sleep
 
+from arcade import load_sound, play_sound
 from arcade.examples.slime_invaders import GAME_OVER
+from arcade.resources import sound_hit1, sound_rock_hit2, sound_jump1, sound_jump3, sound_fall1, sound_gameover1, \
+    sound_laser1, sound_secret2, sound_lose2
 
 # print(help(arcade))
 
@@ -11,8 +14,8 @@ from arcade.examples.slime_invaders import GAME_OVER
 Игра "пинг-понг".
 
 Надо как можно дольше отбивать шарик ракеткой, не давая ему провалиться "в подвал". 
-У игрока за игру есть определённое количество попыток (раундов). Как только шарик падает в подвал, раунд заканчивается, 
-    и игрок теряет одну попытку. Как только у игрока не остаётся ни одной попытки, игра заканчивается.
+У игрока за игру есть определённое количество шариков. Как только шарик падает в подвал, раунд заканчивается. 
+Как только у игрока не остаётся ни одного шарика, игра заканчивается.
 Во время игры ведётся счёт, это количество отражённых ударов.
 
 Управление:
@@ -22,7 +25,7 @@ from arcade.examples.slime_invaders import GAME_OVER
 
 Особенности:
     * Ракетка имеет закруглённые края в виде полукруга, и эта геометрия учитывается при отбивании шарика краем ракетки.
-    * Если при отражении щарика ракетка находится в движении, то это немного влияет на горизонтальную скорость шарика 
+    * Если при отражении шарика ракетка находится в движении, то это немного влияет на горизонтальную скорость шарика 
         (увеличивает, если направления движения ракетки и шарика совпадают, или уменьшает в противном случае)
 
 """
@@ -30,9 +33,9 @@ from arcade.examples.slime_invaders import GAME_OVER
 # Размеры и титул экрана
 SCREEN_WIDTH = 800
 SCREEN_HEIGHT = 600
-SCREEN_TITLE = 'Пинг-понг для Насти и её друзей'
+SCREEN_TITLE = 'Anastasia Pong'
 
-COLLISION_WIDTH = 2  # Глубина прогиба ракетки при столкновении (выяснилось экспериментальным путём)
+COLLISION_DEPTH = 2  # Глубина прогиба ракетки при столкновении (выяснилось экспериментальным путём)
 
 INIT_BALL_SPEED_X = 2  # Начальная скорость шара
 INIT_BALL_SPEED_Y = 4
@@ -44,9 +47,9 @@ ADDED_BALL_SPEED_X = 0.2  # Добавка к горизонтальной ск�
 
 BAR_MOVEMENT_SPEED = 5  # Скорость ракетки при движении
 
-INIT_TRIALS_QTY = 3  # Начальное количество попыток
+INIT_TRIALS_QTY = 3  # Начальное количество шариков
 
-LIVES_CNT_TEXT_X = 10   # Позиция текста счётчика жизней
+LIVES_CNT_TEXT_X = 10   # Позиция текста счётчика шариков
 LIVES_CNT_TEXT_Y = 20
 
 SCORE_X = SCREEN_WIDTH * 0.75    # Позиция текста счёта
@@ -55,20 +58,23 @@ SCORE_Y = 20
 TEXT_SIZE = 14      # Параметры текста - размер и цвет
 TEXT_COLOR = arcade.color.BLACK
 
-MIN_ANGLE = radians(15)  # Минимальный угол отклонения вектора скорости от вертикали или горизонтали
+MIN_ANGLE = radians(15)  # Минимальный угол отклонения вектора скорости от вертикали или горизонтали - 15 градусов
 
 SCORE_LIMIT = 5    # Количество ударов, после которого скорость движения шара увеличивается
 SCORE_ACCELERATION = 0.2    # доля увеличения скорости
+
+
 
 class Bar(arcade.Sprite):
     def __init__(self):
         super().__init__('Bar.png', 1)
 
     def update(self):  # Движение ракетки
-        if (self.change_x > 0 and self.right < SCREEN_WIDTH) or (self.change_x < 0 and self.left > 0):
-            self.center_x += self.change_x  # Двигаемся, если не длостигли краёв
+        if (self.change_x >= 0 and self.right < SCREEN_WIDTH) or (self.change_x <= 0 and self.left > 0):
+            self.center_x += self.change_x  # Двигаемся, если не достигли краёв
         else:
             self.change_x = 0  # Достигли краёв
+            play_sound(bar_bump, volume=2, pan=-1, looping=False)
 
 
 class Ball(arcade.Sprite):
@@ -81,8 +87,10 @@ class Ball(arcade.Sprite):
     def update(self):  # Движение шара
         if self.right >= SCREEN_WIDTH or self.left <= 0:  # При ударе об край меняется знак скорости по x
             self.change_x = -self.change_x  # Отражаемся от бортов
+            play_sound(ball_to_wall, 1, pan=-1, looping=False)
         if self.top >= SCREEN_HEIGHT:
             self.change_y = -self.change_y  # Отражаемся от потолка
+            play_sound(ball_to_ceil, 1, pan=-1, looping=False)
         self.center_x += self.change_x  # Двигаемся
         self.center_y += self.change_y
 
@@ -101,10 +109,10 @@ class Game(arcade.Window):
         self.bar.draw()  # Рисуем объекты
         self.ball.draw()
         # Пишем остаток жизней и счёт
-        arcade.draw_text(f'Lives left: {self.lives_left}' +
-                         ('   GAME OVER! <ENTER> to start new game.' if self.lives_left == 0 else '')
+        arcade.draw_text(f'Шариков: {self.lives_left}' +
+                         ('    Шарики улетели! Нажми <ENTER>.' if self.lives_left == 0 else '')
                          , start_x=LIVES_CNT_TEXT_X, start_y=LIVES_CNT_TEXT_Y, color=TEXT_COLOR, font_size=TEXT_SIZE)
-        arcade.draw_text(text=f'Score: {self.ball_hits}', start_x=SCORE_X, start_y=SCORE_Y,
+        arcade.draw_text(text=f'Счёт: {self.ball_hits}', start_x=SCORE_X, start_y=SCORE_Y,
                          color=TEXT_COLOR, font_size=TEXT_SIZE)
 
     def setup_game(self):
@@ -133,6 +141,10 @@ class Game(arcade.Window):
     def update(self, delta_time: float):
         if self.ball.top <= 0 and not self.in_round_start:  # Упустили шар в подвал
             self.lives_left -= 1
+            if self.lives_left > 0:
+                play_sound(ball_lost, volume=1, pan=-1, looping=False)
+            else:
+                play_sound(snd_game_over, volume=1, pan=-1, looping=False)
             sleep(3)
             if self.lives_left > 0:
                 self.setup_round()
@@ -140,6 +152,7 @@ class Game(arcade.Window):
                 self.in_round_start = True
         elif arcade.check_for_collision(self.bar, self.ball):
             if not self.in_collision:  # Это начало столкновения (первое касание при столкновении) с ракеткой
+                play_sound(ball_to_bar, 2, -1, False)
                 self.ball_hits += 1  # Увеличили счёт
                 self.in_collision = True  # Находимся в режиме столкновения - чтоб избежать попыток повторного изменения скорости
                 """ Вызовем метод расчёта вектора скорости после столкновения.
@@ -255,6 +268,7 @@ class Game(arcade.Window):
             if self.in_round_start:
                 self.ball.change_x = 0
         elif symbol == arcade.key.SPACE and self.in_round_start and self.lives_left > 0:  # Подача
+            play_sound(ball_serve)
             self.ball.change_x = INIT_BALL_SPEED_X
             self.ball.change_y = INIT_BALL_SPEED_Y
             self.in_round_start = False  # Всё, не в начале раунда
@@ -265,4 +279,11 @@ class Game(arcade.Window):
 
 if __name__ == '__main__':
     window = Game(SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_TITLE)
+    bar_bump = load_sound(sound_hit1)
+    ball_to_wall = load_sound(sound_rock_hit2)
+    ball_to_ceil = load_sound(sound_jump1)
+    ball_to_bar = load_sound(sound_jump3)
+    ball_lost = load_sound(sound_lose2)
+    snd_game_over = load_sound(sound_gameover1)
+    ball_serve = load_sound(sound_secret2)
     arcade.run()
